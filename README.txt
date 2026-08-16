@@ -6,8 +6,9 @@ Core:
 - Gemini screenshot vision via /api/ai (now requires sign-in + daily quota).
 - Browser Canvas rendering keeps real app UI sharp.
 - IndexedDB for local projects; avoids putting images in Firestore.
-- Optional Pro cloud backup, expiring after 10 days (enforced server-side by cron).
-- Flutterwave one-time payment, verified server-side before Pro is granted.
+- Optional Pro cloud backup via Vercel Blob (free tier), expiring after 20
+  days (enforced server-side by cron — nothing is kept indefinitely).
+- Flutterwave one-time payment ($2.50), verified server-side before Pro is granted.
 
 What changed in this pass:
 - FIXED a critical bug where a delete-project button used `await` in a
@@ -49,30 +50,49 @@ What changed in this pass:
     returned image is baked into a data URL client-side so exports don't
     hit a canvas CORS-taint error and the background survives even if the
     fal-hosted URL later expires.
+- Swapped Pro cloud backup off Firebase Storage (now requires the paid
+  Blaze plan just to enable) onto Vercel Blob, which has a real free tier
+  and lives on the platform this app is already deployed on. New routes
+  /api/backup-project and /api/delete-cloud-project do the writes
+  server-side — this also closes a gap where the old flow trusted the
+  client's local `proStatus` before writing to Firestore/Storage directly;
+  now Pro is re-checked from Firestore on every backup. Backup TTL is now
+  20 days (was 10), still enforced by the same cron job.
 
 Vercel environment variables:
 GEMINI_API_KEY
 GROQ_API_KEY           (Pro-only: fast copy/headline variations)
 FAL_KEY                (Pro-only: fal.ai FLUX background generation)
 FIREBASE_SERVICE_ACCOUNT_JSON
-FIREBASE_STORAGE_BUCKET
-FLUTTERWAVE_SECRET_KEY (new — required for /api/verify-payment)
+FLUTTERWAVE_SECRET_KEY (required for /api/verify-payment)
+BLOB_READ_WRITE_TOKEN  (required for cloud backup — added automatically
+                         once you connect a Blob store to this project in
+                         the Vercel dashboard: Storage tab → Create Database
+                         → Blob → Connect Project. No separate signup.)
 CRON_SECRET             (optional — extra guard on /api/cleanup-cloud)
 
 Firebase:
 - Enable Email/Password and Google sign-in.
 - Add your Vercel domain to Firebase Authentication authorized domains.
-- Configure Firestore and Firebase Storage.
+- Configure Firestore. Firebase Storage is no longer used anywhere in this
+  build — screenshots for cloud backup now live in Vercel Blob instead.
 - Firestore collections used: users/{uid}, usernames/{username},
-  devices/{deviceId}, usedPayments/{txRef}, aiUsage/{uid_date},
-  users/{uid}/projects/{id} (existing cloud-backup subcollection).
-- Set sensible Firestore security rules: users should only read/write their
-  own users/{uid} doc and their own projects subcollection; usernames/,
-  devices/, usedPayments/, and aiUsage/ should be server-write-only (the
-  Admin SDK bypasses rules, so deny client writes to those entirely).
+  devices/{deviceId}, usedPayments/{txRef}, aiUsage/{uid_date_provider},
+  users/{uid}/projects/{id} (cloud-backup metadata; server-write-only).
+- Deploy firestore.rules (Console → Firestore → Rules, or
+  `firebase deploy --only firestore:rules`). Every collection except
+  usernames/ (public read, owner-create-once) is server-write-only — the
+  Admin SDK bypasses rules, clients should never write pro status,
+  free-tier flags, or backup metadata directly.
 - Create a Firebase service account and store its JSON as
   FIREBASE_SERVICE_ACCOUNT_JSON in Vercel.
-- Set FIREBASE_STORAGE_BUCKET to your Firebase Storage bucket name.
+
+Vercel Blob:
+- In the Vercel dashboard: your project → Storage tab → Create Database →
+  Blob → Connect Project. This adds BLOB_READ_WRITE_TOKEN automatically;
+  you don't set it by hand. Free tier covers a generous amount of storage
+  and bandwidth for this use case — check current limits on Vercel's
+  pricing page if you expect heavy usage.
 
 Flutterwave:
 - Get your Secret Key from the Flutterwave dashboard and set it as
@@ -88,3 +108,5 @@ IMPORTANT — still worth doing next:
 - Vercel cron availability depends on your plan; if cron is unavailable, run
   /api/cleanup-cloud from another trusted scheduler and send the
   CRON_SECRET as a Bearer token if you set one.
+- storage.rules was removed — it's no longer relevant now that Firebase
+  Storage isn't used. Only firestore.rules needs deploying.

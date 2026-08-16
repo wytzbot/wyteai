@@ -121,7 +121,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:25px}.modal{p
 <section class="section" id="projects">
 <div class="card">
 <h2>Your projects</h2>
-<p class="small">Projects are kept locally in your browser. Pro cloud backup is optional and expires after 10 days.</p>
+<p class="small">Projects are kept locally in your browser. Pro cloud backup is optional and expires after 20 days.</p>
 <div id="projectList" class="grid"></div>
 </div></section>
 
@@ -137,7 +137,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:25px}.modal{p
 <div class="card" style="margin:14px 0">
   <span class="badge">PRO</span>
   <h3>☁ Temporary cloud backup</h3>
-  <p class="small">Optional Pro backup. Uploaded project assets are automatically removed after 10 days. Updating a project refreshes its 10-day expiry.</p>
+  <p class="small">Optional Pro backup. Uploaded project assets are automatically removed after 20 days. Updating a project refreshes its 20-day expiry.</p>
   <button class="btn accent" id="backupToggle">Enable cloud backup</button>
   <div id="backupMsg"></div>
 </div>
@@ -160,8 +160,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:25px}.modal{p
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, getDocs, query, where, runTransaction } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-import { getStorage, ref, uploadString, deleteObject } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
+import { getFirestore, doc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 const firebaseConfig={
  apiKey:"AIzaSyCdxIDql8POEd9fCah1t6-jpNnRhrbijso",
@@ -176,7 +175,6 @@ const app=initializeApp(firebaseConfig);
 try{getAnalytics(app)}catch(e){}
 const auth=getAuth(app);
 const db=getFirestore(app);
-const storage=getStorage(app);
 const provider=new GoogleAuthProvider();
 
 let cloudBackupEnabled=false;
@@ -419,7 +417,7 @@ await idbPut(p);
 localStorage.setItem("wyte_projects_"+currentUser.uid,JSON.stringify(projects.map(x=>({...x,image:null,genBg:null}))));
 renderStats();
 if(cloudBackupEnabled && proStatus){
-  try{await backupProjectToCloud(p);alert("Project saved and backed up for 10 days.");}
+  try{await backupProjectToCloud(p);alert("Project saved and backed up for 20 days.");}
   catch(e){alert("Project saved locally, but cloud backup failed: "+e.message)}
 }else alert("Project saved locally.");
 };
@@ -497,27 +495,24 @@ async function getCloudProfile(){
 }
 async function backupProjectToCloud(p){
  if(!currentUser)throw new Error("Not signed in");
- if(!proStatus)throw new Error("Pro is required");
- const expiresAt=new Date(Date.now()+10*24*60*60*1000);
- const base=`users/${currentUser.uid}/projects/${p.id}`;
- const meta={
-   uid:currentUser.uid,projectId:String(p.id),name:p.name,template:p.template,
-   headline:p.headline,subtitle:p.subtitle,bg:p.bg,fg:p.fg,frame:p.frame,size:p.size,
-   createdAt:p.createdAt||Date.now(),updatedAt:Date.now(),expiresAt:expiresAt.toISOString()
- };
- await setDoc(doc(db,"users",currentUser.uid,"projects",String(p.id)),meta);
- if(p.image) await uploadString(ref(storage,base+"/screenshot"),p.image,"data_url");
+ const idToken=await currentUser.getIdToken();
+ const r=await fetch("/api/backup-project",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},body:JSON.stringify({project:p})});
+ const data=await r.json();
+ if(!r.ok) throw new Error(data.error||"Backup failed");
+ return data;
 }
 async function deleteCloudProject(id){
  if(!currentUser)return;
- try{await deleteDoc(doc(db,"users",currentUser.uid,"projects",String(id)))}catch(e){}
- try{await deleteObject(ref(storage,`users/${currentUser.uid}/projects/${id}/screenshot`))}catch(e){}
+ try{
+  const idToken=await currentUser.getIdToken();
+  await fetch("/api/delete-cloud-project",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},body:JSON.stringify({projectId:id})});
+ }catch(e){}
 }
 $("backupToggle").onclick=async()=>{
  if(!proStatus){openPro();return}
  cloudBackupEnabled=!cloudBackupEnabled;
  $("backupToggle").textContent=cloudBackupEnabled?"Cloud backup enabled":"Enable cloud backup";
- $("backupMsg").innerHTML=cloudBackupEnabled?'<div class="msg ok">New saves will be backed up for 10 days. Updating a project refreshes its expiry.</div>':'<div class="msg">Cloud backup disabled. Local projects remain available.</div>';
+ $("backupMsg").innerHTML=cloudBackupEnabled?'<div class="msg ok">New saves will be backed up for 20 days. Updating a project refreshes its expiry.</div>':'<div class="msg">Cloud backup disabled. Local projects remain available.</div>';
  if(cloudBackupEnabled) for(const p of projects){try{await backupProjectToCloud(p)}catch(e){}}
 };
 
