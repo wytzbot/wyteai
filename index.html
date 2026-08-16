@@ -80,13 +80,27 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:25px}.modal{p
 <section class="section" id="create">
 <div class="card">
 <div class="toolbar"><button class="btn" id="newBtn">New</button><button class="btn accent" id="downloadBtn">Export PNG</button><button class="btn" id="jpgBtn">Export JPG</button><select id="size"><option value="ios">iPhone / App Store — 1290×2796</option><option value="android">Google Play — 1080×1920</option><option value="ipad">iPad — 2048×2732</option></select></div>
-<div class="card" style="margin-bottom:14px">
-  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+<div class="card">
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
     <div><h3 style="margin:0">✨ WYTE AI Assistant</h3><p class="small" style="margin:4px 0">Analyze your screenshot and generate store-ready copy, layout recommendations and design settings.</p></div>
     <button class="btn accent" id="aiAnalyzeBtn">Analyze with AI</button>
   </div>
   <div id="aiMsg"></div>
   <div id="aiSuggestions" class="grid hidden" style="margin-top:12px"></div>
+  <hr style="margin:14px 0;border:none;border-top:1px solid var(--line)">
+  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+    <div><h3 style="margin:0">Copy variations <span class="badge">Pro</span></h3><p class="small" style="margin:4px 0">Fast alternate headline/subtitle options via Groq.</p></div>
+    <button class="btn" id="groqRewriteBtn">Get variations</button>
+  </div>
+  <div id="groqMsg"></div>
+  <div id="groqSuggestions" class="grid hidden" style="margin-top:12px"></div>
+  <hr style="margin:14px 0;border:none;border-top:1px solid var(--line)">
+  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+    <div><h3 style="margin:0">AI background <span class="badge">Pro</span></h3><p class="small" style="margin:4px 0">Generate a custom background graphic behind your screenshot via fal.</p></div>
+    <button class="btn" id="falBgBtn">Generate background</button>
+  </div>
+  <div id="falMsg"></div>
+  <button class="btn" id="falBgClearBtn" style="margin-top:8px;display:none">Remove generated background</button>
 </div>
 <div class="editor">
 <div class="controls">
@@ -359,12 +373,20 @@ $("file").onchange=e=>{
 ["template","headline","subtitle","bg","fg","frame","size"].forEach(id=>$(id).addEventListener("input",draw));
 
 function getDims(){const v=$("size").value;return v==="android"?[1080,1920]:v==="ipad"?[2048,2732]:[1290,2796]}
+let genBgDataUrl=null, genBgImg=null;
+
 function draw(){
  const [W,H]=getDims(),c=$("canvas"),ctx=c.getContext("2d");c.width=W;c.height=H;
  const t=$("template").value;
  let bg=$("bg").value,fg=$("fg").value;
- if(t==="dark"){bg="#111827";fg="#ffffff"} if(t==="gradient"){const g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,"#635bff");g.addColorStop(1,"#a78bfa");ctx.fillStyle=g}else ctx.fillStyle=bg;
- ctx.fillRect(0,0,W,H);
+ if(genBgImg){
+  ctx.drawImage(genBgImg,0,0,W,H);
+  ctx.fillStyle="rgba(0,0,0,.28)";ctx.fillRect(0,0,W,H);
+  fg=$("fg").value;
+ } else {
+  if(t==="dark"){bg="#111827";fg="#ffffff"} if(t==="gradient"){const g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,"#635bff");g.addColorStop(1,"#a78bfa");ctx.fillStyle=g}else ctx.fillStyle=bg;
+  ctx.fillRect(0,0,W,H);
+ }
  const pad=W*.085; ctx.fillStyle=fg;ctx.textAlign="center";
  ctx.font=`900 ${Math.round(W*.065)}px system-ui`; wrap(ctx,$("headline").value,W/2,H*.14,W*.82,Math.round(W*.065*1.15));
  ctx.font=`500 ${Math.round(W*.035)}px system-ui`;ctx.globalAlpha=.78;wrap(ctx,$("subtitle").value,W/2,H*.24,W*.78,Math.round(W*.035*1.4));ctx.globalAlpha=1;
@@ -391,10 +413,10 @@ $("saveBtn").onclick=async()=>{
  if(!currentUser)return;
  if(!profileLoaded){alert("Still syncing your account, try again in a moment.");return}
  if(!proStatus && projects.length>=freeProjectLimit()){openPro();return}
- const p={id:Date.now(),name:$("headline").value.slice(0,35)||"Untitled project",createdAt:Date.now(),template:$("template").value,headline:$("headline").value,subtitle:$("subtitle").value,bg:$("bg").value,fg:$("fg").value,frame:$("frame").value,size:$("size").value,image:uploaded};
+ const p={id:Date.now(),name:$("headline").value.slice(0,35)||"Untitled project",createdAt:Date.now(),template:$("template").value,headline:$("headline").value,subtitle:$("subtitle").value,bg:$("bg").value,fg:$("fg").value,frame:$("frame").value,size:$("size").value,image:uploaded,genBg:genBgDataUrl};
  projects.push(p);
 await idbPut(p);
-localStorage.setItem("wyte_projects_"+currentUser.uid,JSON.stringify(projects.map(x=>({...x,image:null}))));
+localStorage.setItem("wyte_projects_"+currentUser.uid,JSON.stringify(projects.map(x=>({...x,image:null,genBg:null}))));
 renderStats();
 if(cloudBackupEnabled && proStatus){
   try{await backupProjectToCloud(p);alert("Project saved and backed up for 10 days.");}
@@ -412,16 +434,38 @@ function renderProjects(){
   const p=projects.find(x=>x.id===id);
   projects=projects.filter(x=>x.id!==id);
   await idbDelete(id);
-  localStorage.setItem("wyte_projects_"+currentUser.uid,JSON.stringify(projects.map(x=>({...x,image:null}))));
+  localStorage.setItem("wyte_projects_"+currentUser.uid,JSON.stringify(projects.map(x=>({...x,image:null,genBg:null}))));
   if(cloudBackupEnabled && p) { try{await deleteCloudProject(p.id)}catch(e){} }
   renderProjects();renderStats();
  });
 }
-function loadProject(id){const p=projects.find(x=>x.id===id);if(!p)return;$("headline").value=p.headline;$("subtitle").value=p.subtitle;$("bg").value=p.bg;$("fg").value=p.fg;$("template").value=p.template;$("frame").value=p.frame;$("size").value=p.size;uploaded=p.image;showSection("create");draw()}
+function setGenBg(src){
+ genBgDataUrl=src||null;
+ if(!src){genBgImg=null;$("falBgClearBtn").style.display="none";draw();return}
+ const img=new Image();
+ img.crossOrigin="anonymous";
+ img.onload=()=>{
+  try{
+   // Bake the (possibly remote) generated image into a data URL so it
+   // (a) can be exported via canvas.toDataURL() without a CORS taint error,
+   // and (b) survives being saved/reloaded even if the fal-hosted URL
+   // later expires.
+   const oc=document.createElement("canvas");oc.width=img.naturalWidth;oc.height=img.naturalHeight;
+   oc.getContext("2d").drawImage(img,0,0);
+   genBgDataUrl=oc.toDataURL("image/jpeg",0.9);
+  }catch(e){ /* CORS-blocked: still draw for this session, just won't persist reliably */ }
+  genBgImg=img;
+  $("falBgClearBtn").style.display="";
+  draw();
+ };
+ img.onerror=()=>{ setFalMsg("Could not load the generated background image.","error"); };
+ img.src=src;
+}
+function loadProject(id){const p=projects.find(x=>x.id===id);if(!p)return;$("headline").value=p.headline;$("subtitle").value=p.subtitle;$("bg").value=p.bg;$("fg").value=p.fg;$("template").value=p.template;$("frame").value=p.frame;$("size").value=p.size;uploaded=p.image;setGenBg(p.genBg||null);showSection("create");draw()}
 function renderStats(){$("projectCount").textContent=projects.length;$("exportCount").textContent=exports;$("planStat").textContent=proStatus?"Pro":"Free"}
 function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 
-$("newBtn").onclick=()=>{uploaded=null;$("headline").value="Your app, beautifully presented";$("subtitle").value="Show users why they should download it.";draw()};
+$("newBtn").onclick=()=>{uploaded=null;$("headline").value="Your app, beautifully presented";$("subtitle").value="Show users why they should download it.";setGenBg(null);draw()};
 function openPro(){$("proModal").classList.remove("hidden");proMsg("")}
 $("proTop").onclick=openPro;$("closeModal").onclick=()=>$("proModal").classList.add("hidden");
 $("activateBtn").onclick=async()=>{
@@ -534,6 +578,75 @@ function applyAI(data){
     box.appendChild(d);
   });
 }
+
+// --- Groq: fast text-only copy variations (Pro only) ---
+function setGroqMsg(text,type=""){ $("groqMsg").innerHTML=text?`<div class="msg ${type}">${text}</div>`:""; }
+$("groqRewriteBtn").onclick=async()=>{
+  if(!currentUser){setGroqMsg("Sign in to use this.","error");return}
+  if(!proStatus){setGroqMsg("Copy variations are a Pro feature.","error");openPro();return}
+  setGroqMsg("Generating variations…");
+  $("groqSuggestions").classList.add("hidden");
+  try{
+    const idToken=await currentUser.getIdToken();
+    const r=await fetch(AI_ENDPOINT,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
+      body:JSON.stringify({
+        provider:"groq",
+        context:{
+          currentHeadline:$("headline").value,
+          currentSubtitle:$("subtitle").value,
+          template:$("template").value
+        }
+      })
+    });
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.error||"Request failed");
+    const box=$("groqSuggestions");box.innerHTML="";box.classList.remove("hidden");
+    (data.variations||[]).forEach(v=>{
+      const d=document.createElement("div");d.className="template";
+      d.innerHTML=`<strong>${escapeHtml(v.headline||"")}</strong><span class="small">${escapeHtml(v.subtitle||"")}</span><br><button class="btn" style="margin-top:8px">Use this</button>`;
+      d.querySelector("button").onclick=()=>{
+        if(v.headline)$("headline").value=String(v.headline).slice(0,50);
+        if(v.subtitle)$("subtitle").value=String(v.subtitle).slice(0,90);
+        draw();
+      };
+      box.appendChild(d);
+    });
+    setGroqMsg("Pick a variation to apply it.","ok");
+  }catch(e){ setGroqMsg(e.message||"Could not generate variations.","error"); }
+};
+
+// --- fal (FLUX): generated background behind the screenshot (Pro only) ---
+function setFalMsg(text,type=""){ $("falMsg").innerHTML=text?`<div class="msg ${type}">${text}</div>`:""; }
+$("falBgBtn").onclick=async()=>{
+  if(!currentUser){setFalMsg("Sign in to use this.","error");return}
+  if(!proStatus){setFalMsg("AI backgrounds are a Pro feature.","error");openPro();return}
+  setFalMsg("Generating background… this can take a few seconds.");
+  try{
+    const idToken=await currentUser.getIdToken();
+    const r=await fetch(AI_ENDPOINT,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
+      body:JSON.stringify({
+        provider:"fal",
+        context:{
+          currentHeadline:$("headline").value,
+          currentSubtitle:$("subtitle").value,
+          template:$("template").value,
+          bg:$("bg").value,
+          fg:$("fg").value
+        }
+      })
+    });
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.error||"Request failed");
+    if(!data.imageUrl) throw new Error("No image was returned.");
+    setGenBg(data.imageUrl);
+    setFalMsg("Background applied.","ok");
+  }catch(e){ setFalMsg(e.message||"Could not generate a background.","error"); }
+};
+$("falBgClearBtn").onclick=()=>{setGenBg(null);setFalMsg("")};
 
 function showLanding(){location.hash="";$("legal").classList.add("hidden");$("landing").classList.remove("hidden")}
 function legal(title,body){$("landing").classList.add("hidden");$("workspace").classList.add("hidden");$("legal").classList.remove("hidden");$("legalTitle").textContent=title;$("legalBody").innerHTML=body}

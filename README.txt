@@ -37,15 +37,23 @@ What changed in this pass:
 - Google sign-in now falls back to signInWithRedirect if the popup is
   blocked/closed/fails on network error (helps mobile browsers).
 - Removed the "AI settings" modal — it was unreachable dead UI (nothing
-  ever opened it, its Run button had no handler); Groq/FLUX vision are still
-  not implemented server-side, so the modal was misleading either way.
+  ever opened it, its Run button had no handler).
 - Signup sends a verification email; unverified accounts see a banner with
   a resend button.
+- Groq and fal are now really wired, both gated to Pro server-side (never
+  trust the client's "isPro" flag) with their own daily quota buckets:
+  - Groq ("Copy variations", Pro): fast text-only rewrite of headline/
+    subtitle into 3 alternates, via llama-3.3-70b-versatile.
+  - fal ("AI background", Pro): generates a custom background graphic via
+    fal-ai/flux/schnell, drawn behind the screenshot on the canvas. The
+    returned image is baked into a data URL client-side so exports don't
+    hit a canvas CORS-taint error and the background survives even if the
+    fal-hosted URL later expires.
 
 Vercel environment variables:
 GEMINI_API_KEY
-GROQ_API_KEY           (optional; provider not yet implemented for vision)
-FLUX_API_KEY           (optional; reserved for future use)
+GROQ_API_KEY           (Pro-only: fast copy/headline variations)
+FAL_KEY                (Pro-only: fal.ai FLUX background generation)
 FIREBASE_SERVICE_ACCOUNT_JSON
 FIREBASE_STORAGE_BUCKET
 FLUTTERWAVE_SECRET_KEY (new — required for /api/verify-payment)
