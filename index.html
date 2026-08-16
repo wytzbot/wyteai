@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="description" content="WYTE AI — turn app screenshots into professional store-ready visuals.">
+<title>WYTE AI — App Screenshot Designer</title>
+<style>
+:root{--bg:#f7f7f8;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--brand:#111827;--accent:#635bff;--danger:#dc2626}
+*{box-sizing:border-box}html,body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}button{cursor:pointer}.hidden{display:none!important}
+header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.92);backdrop-filter:blur(14px);position:sticky;top:0;z-index:20}
+.logo{font-weight:900;letter-spacing:-.04em;font-size:21px}.logo span{color:var(--accent)}
+.top-actions{display:flex;gap:8px;align-items:center}.btn{border:1px solid var(--line);background:#fff;padding:10px 14px;border-radius:12px;font-weight:700}.btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}.btn.accent{background:var(--accent);color:#fff;border-color:var(--accent)}.btn.danger{color:var(--danger)}
+main{max-width:1200px;margin:auto;padding:24px 16px 90px}.hero{text-align:center;padding:28px 10px 20px}.hero h1{font-size:clamp(30px,6vw,54px);margin:0 0 10px;letter-spacing:-.055em}.hero p{color:var(--muted);max-width:650px;margin:auto;font-size:16px;line-height:1.6}
+.auth,.app{max-width:1080px;margin:18px auto}.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 8px 30px rgba(17,24,39,.05)}
+.auth{max-width:440px}.tabs{display:flex;background:#f1f2f4;border-radius:12px;padding:4px;margin-bottom:16px}.tabs button{flex:1;border:0;background:transparent;padding:10px;border-radius:9px;font-weight:800}.tabs button.active{background:#fff;box-shadow:0 2px 8px #0000000d}
+.field{margin:12px 0}.field label{display:block;font-size:13px;font-weight:800;margin-bottom:6px}.field input,.field select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;outline:none;background:#fff}.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #635bff18}.full{width:100%}.small{font-size:12px;color:var(--muted);line-height:1.5}.link{color:var(--accent);font-weight:800;text-decoration:none}.msg{margin:10px 0;padding:11px;border-radius:11px;font-size:13px;background:#f3f4f6}.msg.error{background:#fef2f2;color:#991b1b}.msg.ok{background:#ecfdf5;color:#065f46}
+.dashboard{display:grid;grid-template-columns:230px 1fr;gap:16px}.side{height:max-content;position:sticky;top:82px}.navbtn{width:100%;border:0;background:transparent;text-align:left;padding:12px;border-radius:10px;font-weight:750;margin:2px 0}.navbtn.active,.navbtn:hover{background:#f0f1f3}
+.section{display:none}.section.active{display:block}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.template{border:1px solid var(--line);border-radius:15px;padding:12px;background:#fff;text-align:left}.template strong{display:block;margin-bottom:6px}.swatch{height:65px;border-radius:10px;margin-bottom:8px}.editor{display:grid;grid-template-columns:310px 1fr;gap:16px}.controls .field{margin:10px 0}.preview-wrap{background:#eceef2;border-radius:18px;min-height:540px;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden}
+canvas{max-width:100%;height:auto;box-shadow:0 18px 45px #0003;border-radius:8px;background:#fff}
+.upload{border:2px dashed #cfd3da;border-radius:16px;padding:28px;text-align:center;background:#fafafa}.upload input{display:none}.upload label{display:inline-block;padding:12px 16px;background:#111827;color:#fff;border-radius:12px;font-weight:800}
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{padding:15px;border:1px solid var(--line);border-radius:15px}.stat b{display:block;font-size:23px}.plans{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.price{font-size:34px;font-weight:900}.plan ul{padding-left:20px;line-height:1.8}.badge{display:inline-block;background:#ede9fe;color:#5b21b6;padding:5px 8px;border-radius:99px;font-size:11px;font-weight:900}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:25px}.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:18px;z-index:50}.modal .card{max-width:520px;width:100%;max-height:90vh;overflow:auto}
+@media(max-width:800px){.dashboard,.editor{grid-template-columns:1fr}.side{position:static;display:flex;overflow:auto;gap:5px}.navbtn{white-space:nowrap;width:auto}.plans{grid-template-columns:1fr}.statgrid{grid-template-columns:1fr 1fr}.hero{padding-top:20px}}
+@media(max-width:480px){header{padding:0 12px}.top-actions .btn:first-child{display:none}.card{border-radius:16px;padding:14px}.preview-wrap{min-height:380px;padding:10px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">WYTE <span>AI</span></div>
+  <div class="top-actions">
+    <button class="btn" id="proTop">Go Pro</button>
+    <button class="btn" id="logoutTop">Sign out</button>
+  </div>
+</header>
+
+<main>
+<section id="landing">
+  <div class="hero">
+    <h1>Make your app screenshots look <span style="color:var(--accent)">store-ready.</span></h1>
+    <p>Upload your real app screenshot, choose a professional layout, add marketing copy and export a polished App Store or Google Play visual — without changing your app UI.</p>
+  </div>
+  <div class="auth card">
+    <div class="tabs"><button id="loginTab" class="active">Sign in</button><button id="signupTab">Create account</button></div>
+    <form id="authForm">
+      <div class="field hidden" id="usernameField"><label>Username</label><input id="username" type="text" autocomplete="username" placeholder="yourname" minlength="3" maxlength="20"></div>
+      <div class="field"><label id="identifierLabel">Email</label><input id="email" type="text" autocomplete="email" required placeholder="you@example.com"></div>
+      <div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters"></div>
+      <button class="btn primary full" id="authSubmit">Sign in</button>
+    </form>
+    <button class="btn full" id="googleBtn" style="margin-top:9px">Continue with Google</button>
+    <button class="btn full" id="forgotBtn" style="margin-top:9px">Forgot password?</button>
+    <div id="authMsg"></div>
+    <p class="small">By continuing, you agree to our <a class="link" href="#terms">Terms</a> and <a class="link" href="#privacy">Privacy Policy</a>.</p>
+  </div>
+</section>
+
+<section id="workspace" class="app hidden">
+<div class="dashboard">
+<aside class="side card">
+  <button class="navbtn active" data-section="home">⌂ Dashboard</button>
+  <button class="navbtn" data-section="create">＋ Create</button>
+  <button class="navbtn" data-section="projects">▣ Projects</button>
+  <button class="navbtn" data-section="plans">♢ Pro</button>
+  <button class="navbtn" data-section="account">⚙ Account</button>
+  <button class="navbtn" data-section="help">? Help</button>
+</aside>
+
+<div>
+<section class="section active" id="home">
+<div id="verifyBanner" class="msg hidden" style="margin-bottom:12px"></div>
+<div id="freeTierBanner" class="msg hidden" style="margin-bottom:12px"></div>
+<div class="card"><h2>Welcome to WYTE AI</h2><p class="small">Create professional store screenshots from your real app UI. Your files stay in this browser unless you explicitly export them.</p>
+<div class="statgrid"><div class="stat"><b id="projectCount">0</b><span class="small">Projects</span></div><div class="stat"><b id="exportCount">0</b><span class="small">Exports</span></div><div class="stat"><b id="planStat">Free</b><span class="small">Plan</span></div></div>
+<button class="btn primary" style="margin-top:15px" data-go="create">Create screenshot</button></div>
+</section>
+
+<section class="section" id="create">
+<div class="card">
+<div class="toolbar"><button class="btn" id="newBtn">New</button><button class="btn accent" id="downloadBtn">Export PNG</button><button class="btn" id="jpgBtn">Export JPG</button><select id="size"><option value="ios">iPhone / App Store — 1290×2796</option><option value="android">Google Play — 1080×1920</option><option value="ipad">iPad — 2048×2732</option></select></div>
+<div class="card" style="margin-bottom:14px">
+  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+    <div><h3 style="margin:0">✨ WYTE AI Assistant</h3><p class="small" style="margin:4px 0">Analyze your screenshot and generate store-ready copy, layout recommendations and design settings.</p></div>
+    <button class="btn accent" id="aiAnalyzeBtn">Analyze with AI</button>
+  </div>
+  <div id="aiMsg"></div>
+  <div id="aiSuggestions" class="grid hidden" style="margin-top:12px"></div>
+</div>
+<div class="editor">
+<div class="controls">
+<div class="upload"><input id="file" type="file" accept="image/*"><label for="file">Upload screenshot</label><p class="small">PNG, JPG or WEBP. The original UI is preserved.</p></div>
+<div class="field"><label>Template</label><select id="template"><option value="minimal">Minimal</option><option value="dark">Dark Premium</option><option value="gradient">Gradient</option><option value="bold">Bold Startup</option></select></div>
+<div class="field"><label>Headline</label><input id="headline" maxlength="50" value="Your app, beautifully presented"></div>
+<div class="field"><label>Subtitle</label><input id="subtitle" maxlength="90" value="Show users why they should download it."></div>
+<div class="field"><label>Background</label><input id="bg" type="color" value="#f5f5f7"></div>
+<div class="field"><label>Text color</label><input id="fg" type="color" value="#111827"></div>
+<div class="field"><label>Device frame</label><select id="frame"><option value="phone">Phone</option><option value="none">None</option></select></div>
+<button class="btn full" id="saveBtn">Save project</button>
+</div>
+<div class="preview-wrap"><canvas id="canvas" width="1290" height="2796"></canvas></div>
+</div>
+</div>
+</section>
+
+<section class="section" id="projects">
+<div class="card">
+<h2>Your projects</h2>
+<p class="small">Projects are kept locally in your browser. Pro cloud backup is optional and expires after 10 days.</p>
+<div id="projectList" class="grid"></div>
+</div></section>
+
+<section class="section" id="plans"><div class="card"><span class="badge">PRO</span><h2>Build more, export more.</h2><div class="plans">
+<div class="card plan"><h3>Free</h3><div class="price">$0</div><ul><li>3 saved projects</li><li>Basic templates</li><li>PNG export</li><li>Browser-based editing</li></ul></div>
+<div class="card plan"><h3>WYTE AI Pro</h3><div class="price">$2.50</div><p class="small">One-time payment via Flutterwave</p><ul><li>Unlimited projects</li><li>Premium templates</li><li>JPG + PNG export</li><li>More store sizes</li><li>AI-ready workflow</li></ul><a class="btn accent full" target="_blank" rel="noopener" href="https://flutterwave.com/pay/fp0beaflusea">Pay $2.50 for Pro</a></div>
+</div><p class="small" style="margin-top:15px">Payment is processed by Flutterwave. After payment, use Account → Activate Pro and keep your payment reference. For production, server-side payment verification should be added before automatically granting access.</p></div></section>
+
+<section class="section" id="account">
+<div class="card">
+<h2>Account</h2>
+<p id="accountEmail" class="small"></p>
+<div class="card" style="margin:14px 0">
+  <span class="badge">PRO</span>
+  <h3>☁ Temporary cloud backup</h3>
+  <p class="small">Optional Pro backup. Uploaded project assets are automatically removed after 10 days. Updating a project refreshes its 10-day expiry.</p>
+  <button class="btn accent" id="backupToggle">Enable cloud backup</button>
+  <div id="backupMsg"></div>
+</div>
+<button class="btn" id="accountLogout">Sign out</button>
+</div>
+</section>
+
+<section class="section" id="help"><div class="card"><h2>Help</h2><h3>How to create a screenshot</h3><p>Upload your app screenshot, choose a template, edit the headline/subtitle and export. For best results, upload a clean screenshot without browser chrome.</p><h3>Password reset</h3><p>If you don't see the reset email, check your <b>Spam/Junk</b> or Promotions folder and search for “WYTE AI” or Firebase.</p><h3>Privacy</h3><p>Your uploaded images are processed locally in this version. We do not upload them to a server for ordinary editing.</p></div></section>
+</div>
+</div>
+</section>
+
+<section id="legal" class="card hidden"><h2 id="legalTitle"></h2><div id="legalBody"></div><button class="btn" onclick="showLanding()">Back</button></section>
+</main>
+<footer>© 2026 WYTE AI · <a href="#privacy" class="link">Privacy</a> · <a href="#terms" class="link">Terms</a> · <a href="#contact" class="link">Contact</a></footer>
+
+<div class="modal hidden" id="proModal"><div class="card"><h2>Activate Pro</h2><p class="small">After payment, enter your Flutterwave transaction reference. It's verified server-side against Flutterwave before Pro is granted — nothing is unlocked on trust alone.</p><div class="field"><label>Flutterwave transaction reference</label><input id="txRef" placeholder="e.g. 1234567"></div><button class="btn accent full" id="activateBtn">Verify &amp; activate Pro</button><button class="btn full" id="closeModal" style="margin-top:8px">Cancel</button><div id="proMsg"></div></div></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, getDocs, query, where, runTransaction } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getStorage, ref, uploadString, deleteObject } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
+
+const firebaseConfig={
+ apiKey:"AIzaSyCdxIDql8POEd9fCah1t6-jpNnRhrbijso",
+ authDomain:"wyteai.firebaseapp.com",
+ projectId:"wyteai",
+ storageBucket:"wyteai.firebasestorage.app",
+ messagingSenderId:"609175365384",
+ appId:"1:609175365384:web:3084b3cf1660ff8f9e6ebd",
+ measurementId:"G-K7QFRW1RNM"
+};
+const app=initializeApp(firebaseConfig);
+try{getAnalytics(app)}catch(e){}
+const auth=getAuth(app);
+const db=getFirestore(app);
+const storage=getStorage(app);
+const provider=new GoogleAuthProvider();
+
+let cloudBackupEnabled=false;
+const DB_NAME="wyte_ai_local";
+const DB_VERSION=1;
+function openLocalDB(){
+ return new Promise((resolve,reject)=>{
+  const r=indexedDB.open(DB_NAME,DB_VERSION);
+  r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("projects"))r.result.createObjectStore("projects",{keyPath:"id"})};
+  r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
+ });
+}
+async function idbPut(p){const dbx=await openLocalDB();return new Promise((res,rej)=>{const tx=dbx.transaction("projects","readwrite");tx.objectStore("projects").put(p);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+async function idbDelete(id){const dbx=await openLocalDB();return new Promise((res,rej)=>{const tx=dbx.transaction("projects","readwrite");tx.objectStore("projects").delete(id);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+async function idbGetAll(){const dbx=await openLocalDB();return new Promise((res,rej)=>{const tx=dbx.transaction("projects","readonly");const r=tx.objectStore("projects").getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+
+const $=id=>document.getElementById(id);
+let mode="login", currentUser=null, uploaded=null, projects=[], exports=0;
+let proStatus=false, freeTierBlocked=false, profileLoaded=false;
+
+// Persistent device id: survives sign-out (only localStorage.clear() or a
+// different browser/profile resets it), used server-side to stop a new
+// account on the same device from getting a second free tier.
+function getDeviceId(){
+ let id=localStorage.getItem("wyte_device_id");
+ if(!id){id=crypto.randomUUID();localStorage.setItem("wyte_device_id",id)}
+ return id;
+}
+
+function msg(text,type=""){ $("authMsg").innerHTML=text?`<div class="msg ${type}">${text}</div>`:""; }
+function proMsg(text,type=""){ $("proMsg").innerHTML=text?`<div class="msg ${type}">${text}</div>`:""; }
+
+function setMode(m){
+ mode=m;
+ $("loginTab").classList.toggle("active",m==="login");
+ $("signupTab").classList.toggle("active",m==="signup");
+ $("authSubmit").textContent=m==="login"?"Sign in":"Create account";
+ $("usernameField").classList.toggle("hidden",m!=="signup");
+ $("username").required = m==="signup";
+ $("identifierLabel").textContent = m==="signup" ? "Email" : "Email or username";
+ $("email").type = m==="signup" ? "email" : "text";
+ msg("");
+}
+$("loginTab").onclick=()=>setMode("login");
+$("signupTab").onclick=()=>setMode("signup");
+
+async function resolveLoginEmail(identifier){
+ if(identifier.includes("@")) return identifier;
+ const uname=identifier.trim().toLowerCase();
+ const snap=await getDoc(doc(db,"usernames",uname));
+ if(!snap.exists()) throw {code:"auth/user-not-found"};
+ return snap.data().email;
+}
+
+$("authForm").onsubmit=async e=>{
+ e.preventDefault(); msg("Working…");
+ try{
+  if(mode==="login"){
+   const email=await resolveLoginEmail($("email").value.trim());
+   await signInWithEmailAndPassword(auth,email,$("password").value);
+  }else{
+   const email=$("email").value.trim();
+   const username=$("username").value.trim().toLowerCase();
+   if(!/^[a-z0-9_]{3,20}$/.test(username)){msg("Username must be 3-20 characters: letters, numbers, underscore only.","error");return}
+   const cred=await createUserWithEmailAndPassword(auth,email,$("password").value);
+   try{
+    await runTransaction(db,async tx=>{
+     const uRef=doc(db,"usernames",username);
+     const uSnap=await tx.get(uRef);
+     if(uSnap.exists()) throw new Error("USERNAME_TAKEN");
+     tx.set(uRef,{uid:cred.user.uid,email});
+    });
+   }catch(unameErr){
+    // Username collision: keep the account (email is still the source of
+    // truth for login) but surface it so the user can pick another later.
+    msg(unameErr.message==="USERNAME_TAKEN"?"Account created, but that username was just taken — you can still sign in with email.":"Account created.","ok");
+   }
+   try{await sendEmailVerification(cred.user)}catch(e){}
+   await registerDevice(cred.user);
+  }
+ }catch(e){msg(authError(e),"error")}
+};
+$("googleBtn").onclick=async()=>{
+ msg("Opening Google sign-in…");
+ try{await signInWithPopup(auth,provider)}
+ catch(e){
+  if(e?.code==="auth/popup-blocked"||e?.code==="auth/popup-closed-by-user"||e?.code==="auth/network-request-failed"){
+   try{await signInWithRedirect(auth,provider);return}catch(e2){msg(authError(e2),"error");return}
+  }
+  msg(authError(e),"error");
+ }
+};
+getRedirectResult(auth).catch(()=>{});
+$("forgotBtn").onclick=async()=>{
+ try{
+  const email=await resolveLoginEmail($("email").value.trim()||"");
+  if(!email){msg("Enter your email or username first, then tap Forgot password.","error");return}
+  await sendPasswordResetEmail(auth,email);
+  msg("Password reset email sent. If you don't see it, check Spam/Junk or Promotions and search for “WYTE AI” or Firebase.","ok");
+ }catch(e){msg(authError(e),"error")}
+};
+function authError(e){
+ const code=e?.code||"";
+ const map={
+ "auth/invalid-credential":"Email or password is incorrect.",
+ "auth/user-not-found":"No account was found with that email or username.",
+ "auth/wrong-password":"Email or password is incorrect.",
+ "auth/email-already-in-use":"An account already exists with this email. Try signing in.",
+ "auth/weak-password":"Use a stronger password (at least 6 characters).",
+ "auth/invalid-email":"Enter a valid email address.",
+ "auth/popup-closed-by-user":"Google sign-in was cancelled.",
+ "auth/popup-blocked":"Your browser blocked the Google sign-in window. Allow pop-ups and try again.",
+ "auth/network-request-failed":"Network problem. Check your connection and try again."
+ };
+ return map[code]||"Authentication failed. Please try again.";
+}
+
+async function registerDevice(user){
+ try{
+  const idToken=await user.getIdToken();
+  const r=await fetch("/api/register-device",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({idToken,deviceId:getDeviceId()})});
+  const data=await r.json();
+  if(r.ok) freeTierBlocked=!!data.freeTierBlocked;
+ }catch(e){}
+}
+
+async function loadProfile(user){
+ try{
+  const snap=await getDoc(doc(db,"users",user.uid));
+  if(snap.exists()){
+   const d=snap.data();
+   proStatus=!!d.pro;
+   freeTierBlocked=!!d.freeTierBlocked;
+  }
+ }catch(e){}
+ profileLoaded=true;
+ renderVerifyBanner(user);
+ renderFreeTierBanner();
+ renderStats();
+}
+
+function renderVerifyBanner(user){
+ const el=$("verifyBanner");
+ if(user && user.providerData?.some(p=>p.providerId==="password") && !user.emailVerified){
+  el.classList.remove("hidden");
+  el.className="msg";
+  el.innerHTML='Please verify your email. <button class="btn" id="resendVerify" style="margin-left:8px;padding:4px 10px">Resend email</button>';
+  $("resendVerify").onclick=async()=>{try{await sendEmailVerification(user);el.textContent="Verification email sent."}catch(e){}};
+ } else el.classList.add("hidden");
+}
+function renderFreeTierBanner(){
+ const el=$("freeTierBanner");
+ if(!proStatus && freeTierBlocked){
+  el.classList.remove("hidden");
+  el.className="msg error";
+  el.textContent="A free trial was already used on this device, so this account doesn't get free saved projects. Upgrade to Pro to save projects.";
+ } else el.classList.add("hidden");
+}
+
+onAuthStateChanged(auth,async user=>{
+ currentUser=user;
+ if(user){
+  $("landing").classList.add("hidden");$("workspace").classList.remove("hidden");
+  $("accountEmail").textContent=user.email||"Google account";
+  projects=JSON.parse(localStorage.getItem("wyte_projects_"+user.uid)||"[]");
+  exports=Number(localStorage.getItem("wyte_exports_"+user.uid)||0);
+  proStatus=localStorage.getItem("wyte_pro_"+user.uid)==="true";
+  profileLoaded=false;
+  renderStats();draw();
+  await registerDevice(user);
+  await loadProfile(user);
+ }
+ else {$("landing").classList.remove("hidden");$("workspace").classList.add("hidden")}
+});
+function logout(){signOut(auth).catch(()=>{})}
+$("logoutTop").onclick=logout;$("accountLogout").onclick=logout;
+setMode("login");
+
+document.querySelectorAll(".navbtn").forEach(b=>b.onclick=()=>showSection(b.dataset.section));
+document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>showSection(b.dataset.go));
+function showSection(id){
+ document.querySelectorAll(".section").forEach(x=>x.classList.remove("active"));
+ $(id).classList.add("active");
+ document.querySelectorAll(".navbtn").forEach(x=>x.classList.toggle("active",x.dataset.section===id));
+ if(id==="projects")renderProjects();
+ if(id==="home")renderStats();
+}
+
+$("file").onchange=e=>{
+ const f=e.target.files[0]; if(!f)return;
+ if(f.size>15*1024*1024){alert("Please use an image under 15 MB.");return}
+ const r=new FileReader();r.onload=()=>{uploaded=r.result;draw()};r.readAsDataURL(f);
+};
+["template","headline","subtitle","bg","fg","frame","size"].forEach(id=>$(id).addEventListener("input",draw));
+
+function getDims(){const v=$("size").value;return v==="android"?[1080,1920]:v==="ipad"?[2048,2732]:[1290,2796]}
+function draw(){
+ const [W,H]=getDims(),c=$("canvas"),ctx=c.getContext("2d");c.width=W;c.height=H;
+ const t=$("template").value;
+ let bg=$("bg").value,fg=$("fg").value;
+ if(t==="dark"){bg="#111827";fg="#ffffff"} if(t==="gradient"){const g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,"#635bff");g.addColorStop(1,"#a78bfa");ctx.fillStyle=g}else ctx.fillStyle=bg;
+ ctx.fillRect(0,0,W,H);
+ const pad=W*.085; ctx.fillStyle=fg;ctx.textAlign="center";
+ ctx.font=`900 ${Math.round(W*.065)}px system-ui`; wrap(ctx,$("headline").value,W/2,H*.14,W*.82,Math.round(W*.065*1.15));
+ ctx.font=`500 ${Math.round(W*.035)}px system-ui`;ctx.globalAlpha=.78;wrap(ctx,$("subtitle").value,W/2,H*.24,W*.78,Math.round(W*.035*1.4));ctx.globalAlpha=1;
+ if(uploaded){const img=new Image();img.onload=()=>paintImage(ctx,img,W,H,pad);img.src=uploaded}
+ else {ctx.fillStyle="#dfe2e8";roundRect(ctx,pad,H*.34,W-pad*2,H*.46,28);ctx.fillStyle="#8b929e";ctx.font=`700 ${Math.round(W*.035)}px system-ui`;ctx.fillText("Upload your app screenshot",W/2,H*.57)}
+}
+function wrap(ctx,text,x,y,maxWidth,lineH){const words=text.split(" ");let line="",lines=[];for(const w of words){const test=line?line+" "+w:w;if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=w}else line=test}if(line)lines.push(line);lines.slice(0,3).forEach((l,i)=>ctx.fillText(l,x,y+i*lineH))}
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
+function paintImage(ctx,img,W,H,pad){
+ const areaY=H*.31,areaH=H*.57,areaW=W-pad*1.2;let scale=Math.min(areaW/img.width,areaH/img.height);let iw=img.width*scale,ih=img.height*scale,x=(W-iw)/2,y=areaY+(areaH-ih)/2;
+ if($("frame").value==="phone"){ctx.fillStyle="#111";roundRect(ctx,x-18,y-18,iw+36,ih+36,42);ctx.fillStyle="#222";roundRect(ctx,x-7,y-7,iw+14,ih+14,30)}
+ ctx.drawImage(img,x,y,iw,ih)
+}
+function exportCanvas(type){
+ if(!uploaded){alert("Upload a screenshot first.");return}
+ const a=document.createElement("a");a.download=`wyte-ai-screenshot.${type}`;a.href=$("canvas").toDataURL(type==="jpg"?"image/jpeg":"image/png",.95);a.click();
+ exports++;if(currentUser)localStorage.setItem("wyte_exports_"+currentUser.uid,exports);renderStats();
+}
+$("downloadBtn").onclick=()=>exportCanvas("png");$("jpgBtn").onclick=()=>exportCanvas("jpg");
+
+function freeProjectLimit(){ return freeTierBlocked ? 0 : 3; }
+
+$("saveBtn").onclick=async()=>{
+ if(!currentUser)return;
+ if(!profileLoaded){alert("Still syncing your account, try again in a moment.");return}
+ if(!proStatus && projects.length>=freeProjectLimit()){openPro();return}
+ const p={id:Date.now(),name:$("headline").value.slice(0,35)||"Untitled project",createdAt:Date.now(),template:$("template").value,headline:$("headline").value,subtitle:$("subtitle").value,bg:$("bg").value,fg:$("fg").value,frame:$("frame").value,size:$("size").value,image:uploaded};
+ projects.push(p);
+await idbPut(p);
+localStorage.setItem("wyte_projects_"+currentUser.uid,JSON.stringify(projects.map(x=>({...x,image:null}))));
+renderStats();
+if(cloudBackupEnabled && proStatus){
+  try{await backupProjectToCloud(p);alert("Project saved and backed up for 10 days.");}
+  catch(e){alert("Project saved locally, but cloud backup failed: "+e.message)}
+}else alert("Project saved locally.");
+};
+function renderProjects(){
+ const el=$("projectList");el.innerHTML="";
+ if(!projects.length){el.innerHTML='<p class="small">No projects yet.</p>';return}
+ projects.forEach(p=>{const d=document.createElement("div");d.className="template";d.innerHTML=`<div class="swatch" style="background:${p.bg}"></div><strong>${escapeHtml(p.name)}</strong><span class="small">${p.template} · ${p.size}${p.cloudExpiresAt?` · cloud expires ${new Date(p.cloudExpiresAt).toLocaleDateString()}`:""}</span><br><button class="btn" data-load="${p.id}" style="margin-top:8px">Open</button> <button class="btn danger" data-del="${p.id}" style="margin-top:8px">Delete</button>`;el.appendChild(d)});
+ el.querySelectorAll("[data-load]").forEach(b=>b.onclick=()=>loadProject(Number(b.dataset.load)));
+ el.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{
+  if(!currentUser)return;
+  const id=Number(b.dataset.del);
+  const p=projects.find(x=>x.id===id);
+  projects=projects.filter(x=>x.id!==id);
+  await idbDelete(id);
+  localStorage.setItem("wyte_projects_"+currentUser.uid,JSON.stringify(projects.map(x=>({...x,image:null}))));
+  if(cloudBackupEnabled && p) { try{await deleteCloudProject(p.id)}catch(e){} }
+  renderProjects();renderStats();
+ });
+}
+function loadProject(id){const p=projects.find(x=>x.id===id);if(!p)return;$("headline").value=p.headline;$("subtitle").value=p.subtitle;$("bg").value=p.bg;$("fg").value=p.fg;$("template").value=p.template;$("frame").value=p.frame;$("size").value=p.size;uploaded=p.image;showSection("create");draw()}
+function renderStats(){$("projectCount").textContent=projects.length;$("exportCount").textContent=exports;$("planStat").textContent=proStatus?"Pro":"Free"}
+function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+
+$("newBtn").onclick=()=>{uploaded=null;$("headline").value="Your app, beautifully presented";$("subtitle").value="Show users why they should download it.";draw()};
+function openPro(){$("proModal").classList.remove("hidden");proMsg("")}
+$("proTop").onclick=openPro;$("closeModal").onclick=()=>$("proModal").classList.add("hidden");
+$("activateBtn").onclick=async()=>{
+ if(!currentUser){proMsg("Sign in first.","error");return}
+ const ref=$("txRef").value.trim();
+ if(!ref){proMsg("Enter the Flutterwave transaction reference.","error");return}
+ $("activateBtn").disabled=true;
+ proMsg("Verifying payment with Flutterwave…");
+ try{
+  const idToken=await currentUser.getIdToken();
+  const r=await fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({idToken,txRef:ref})});
+  const data=await r.json();
+  if(!r.ok) throw new Error(data.error||"Verification failed.");
+  proStatus=true;
+  localStorage.setItem("wyte_pro_"+currentUser.uid,"true");
+  proMsg("Payment verified — Pro is now active on your account.","ok");
+  renderStats();renderFreeTierBanner();
+  setTimeout(()=>$("proModal").classList.add("hidden"),1200);
+ }catch(e){proMsg(e.message||"Could not verify payment. If you were charged, contact support.","error")}
+ finally{$("activateBtn").disabled=false}
+};
+
+
+
+async function getCloudProfile(){
+ if(!currentUser)return null;
+ const s=await getDoc(doc(db,"users",currentUser.uid));
+ return s.exists()?s.data():null;
+}
+async function backupProjectToCloud(p){
+ if(!currentUser)throw new Error("Not signed in");
+ if(!proStatus)throw new Error("Pro is required");
+ const expiresAt=new Date(Date.now()+10*24*60*60*1000);
+ const base=`users/${currentUser.uid}/projects/${p.id}`;
+ const meta={
+   uid:currentUser.uid,projectId:String(p.id),name:p.name,template:p.template,
+   headline:p.headline,subtitle:p.subtitle,bg:p.bg,fg:p.fg,frame:p.frame,size:p.size,
+   createdAt:p.createdAt||Date.now(),updatedAt:Date.now(),expiresAt:expiresAt.toISOString()
+ };
+ await setDoc(doc(db,"users",currentUser.uid,"projects",String(p.id)),meta);
+ if(p.image) await uploadString(ref(storage,base+"/screenshot"),p.image,"data_url");
+}
+async function deleteCloudProject(id){
+ if(!currentUser)return;
+ try{await deleteDoc(doc(db,"users",currentUser.uid,"projects",String(id)))}catch(e){}
+ try{await deleteObject(ref(storage,`users/${currentUser.uid}/projects/${id}/screenshot`))}catch(e){}
+}
+$("backupToggle").onclick=async()=>{
+ if(!proStatus){openPro();return}
+ cloudBackupEnabled=!cloudBackupEnabled;
+ $("backupToggle").textContent=cloudBackupEnabled?"Cloud backup enabled":"Enable cloud backup";
+ $("backupMsg").innerHTML=cloudBackupEnabled?'<div class="msg ok">New saves will be backed up for 10 days. Updating a project refreshes its expiry.</div>':'<div class="msg">Cloud backup disabled. Local projects remain available.</div>';
+ if(cloudBackupEnabled) for(const p of projects){try{await backupProjectToCloud(p)}catch(e){}}
+};
+
+const AI_ENDPOINT="/api/ai";
+
+function setAiMsg(text,type=""){ $("aiMsg").innerHTML=text?`<div class="msg ${type}">${text}</div>`:""; }
+
+$("aiAnalyzeBtn").onclick=async()=>{
+  if(!uploaded){setAiMsg("Upload a screenshot first.","error");return}
+  await runAI("gemini");
+};
+
+async function runAI(provider){
+  if(!currentUser){setAiMsg("Sign in to use AI analysis.","error");return}
+  if(!uploaded){setAiMsg("Upload a screenshot first.","error");return}
+  setAiMsg("Analyzing your screenshot…");
+  try{
+    const idToken=await currentUser.getIdToken();
+    const r=await fetch(AI_ENDPOINT,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
+      body:JSON.stringify({
+        provider,
+        image:uploaded,
+        context:{
+          product:"WYTE AI App Store Screenshot Designer",
+          currentHeadline:$("headline").value,
+          currentSubtitle:$("subtitle").value,
+          template:$("template").value,
+          size:$("size").value
+        }
+      })
+    });
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.error||"AI request failed");
+    applyAI(data);
+    setAiMsg(`AI analysis complete using ${data.provider||provider}.`,"ok");
+  }catch(e){
+    setAiMsg(e.message||"AI could not analyze this screenshot.","error");
+  }
+}
+function applyAI(data){
+  const s=data.suggestions||data;
+  if(s.headline) $("headline").value=String(s.headline).slice(0,50);
+  if(s.subtitle) $("subtitle").value=String(s.subtitle).slice(0,90);
+  if(["minimal","dark","gradient","bold"].includes(s.template)) $("template").value=s.template;
+  if(/^#[0-9a-f]{6}$/i.test(s.background||"")) $("bg").value=s.background;
+  if(/^#[0-9a-f]{6}$/i.test(s.textColor||"")) $("fg").value=s.textColor;
+  draw();
+  const box=$("aiSuggestions");box.classList.remove("hidden");
+  box.innerHTML="";
+  [
+    ["Headline",s.headline],["Subtitle",s.subtitle],["Template",s.template],
+    ["App category",s.category],["Audience",s.audience],["ASO tip",s.asoTip]
+  ].filter(x=>x[1]).forEach(x=>{
+    const d=document.createElement("div");d.className="template";
+    d.innerHTML=`<strong>${escapeHtml(String(x[0]))}</strong><span class="small">${escapeHtml(String(x[1]))}</span>`;
+    box.appendChild(d);
+  });
+}
+
+function showLanding(){location.hash="";$("legal").classList.add("hidden");$("landing").classList.remove("hidden")}
+function legal(title,body){$("landing").classList.add("hidden");$("workspace").classList.add("hidden");$("legal").classList.remove("hidden");$("legalTitle").textContent=title;$("legalBody").innerHTML=body}
+window.addEventListener("hashchange",()=>{
+ if(location.hash==="#privacy")legal("Privacy Policy","<p>WYTE AI is designed to process ordinary screenshot editing locally in your browser in this version. We collect only information necessary for authentication when Firebase Authentication is used. Do not upload confidential, financial, health or other sensitive information unless you are comfortable doing so.</p><p>Google sign-in is handled by Google/Firebase. Authentication credentials are not stored by WYTE AI itself.</p><p>For questions or deletion requests, contact the operator through the support channel provided with the service.</p>");
+ else if(location.hash==="#terms")legal("Terms of Service","<p>Use WYTE AI lawfully and only with screenshots and content you have the right to use. Do not use the service to impersonate apps, deceive users, infringe intellectual property, or distribute unlawful content.</p><p>Features, limits and prices may change. Paid Pro access is subject to successful payment verification where server-side verification is enabled.</p>");
+ else if(location.hash==="#contact")legal("Contact","<p>For support, use the support email configured by the service operator before publishing this app. Do not publish a made-up email address.</p>");
+});
+</script>
+</body>
+</html>
