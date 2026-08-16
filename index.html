@@ -79,7 +79,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:25px}.modal{p
 
 <section class="section" id="create">
 <div class="card">
-<div class="toolbar"><button class="btn" id="newBtn">New</button><button class="btn accent" id="downloadBtn">Export PNG</button><button class="btn" id="jpgBtn">Export JPG</button><select id="size"><option value="ios">iPhone / App Store — 1290×2796</option><option value="android">Google Play — 1080×1920</option><option value="ipad">iPad — 2048×2732</option></select></div>
+<div class="toolbar"><button class="btn" id="newBtn">New</button><button class="btn accent" id="downloadBtn">Export PNG</button><button class="btn" id="jpgBtn">Export JPG</button><button class="btn" id="exportAllBtn">Export all sizes <span class="badge">Pro</span></button><select id="size"><option value="ios">iPhone / App Store — 1290×2796</option><option value="android">Google Play — 1080×1920</option><option value="ipad">iPad — 2048×2732</option></select></div>
 <div class="card">
 <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
     <div><h3 style="margin:0">✨ WYTE AI Assistant</h3><p class="small" style="margin:4px 0">Analyze your screenshot and generate store-ready copy, layout recommendations and design settings.</p></div>
@@ -110,7 +110,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:25px}.modal{p
 <div class="field"><label>Subtitle</label><input id="subtitle" maxlength="90" value="Show users why they should download it."></div>
 <div class="field"><label>Background</label><input id="bg" type="color" value="#f5f5f7"></div>
 <div class="field"><label>Text color</label><input id="fg" type="color" value="#111827"></div>
-<div class="field"><label>Device frame</label><select id="frame"><option value="phone">Phone</option><option value="none">None</option></select></div>
+<div class="field"><label>Device frame</label><select id="frame"><option value="phone">Phone</option><option value="none">None</option><option value="tablet">Tablet 🔒 Pro</option><option value="browser">Browser window 🔒 Pro</option><option value="glass">Glass premium 🔒 Pro</option></select></div>
 <button class="btn full" id="saveBtn">Save project</button>
 </div>
 <div class="preview-wrap"><canvas id="canvas" width="1290" height="2796"></canvas></div>
@@ -374,36 +374,135 @@ function getDims(){const v=$("size").value;return v==="android"?[1080,1920]:v===
 let genBgDataUrl=null, genBgImg=null;
 
 function draw(){
- const [W,H]=getDims(),c=$("canvas"),ctx=c.getContext("2d");c.width=W;c.height=H;
- const t=$("template").value;
- let bg=$("bg").value,fg=$("fg").value;
- if(genBgImg){
-  ctx.drawImage(genBgImg,0,0,W,H);
-  ctx.fillStyle="rgba(0,0,0,.28)";ctx.fillRect(0,0,W,H);
-  fg=$("fg").value;
- } else {
-  if(t==="dark"){bg="#111827";fg="#ffffff"} if(t==="gradient"){const g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,"#635bff");g.addColorStop(1,"#a78bfa");ctx.fillStyle=g}else ctx.fillStyle=bg;
-  ctx.fillRect(0,0,W,H);
- }
- const pad=W*.085; ctx.fillStyle=fg;ctx.textAlign="center";
- ctx.font=`900 ${Math.round(W*.065)}px system-ui`; wrap(ctx,$("headline").value,W/2,H*.14,W*.82,Math.round(W*.065*1.15));
- ctx.font=`500 ${Math.round(W*.035)}px system-ui`;ctx.globalAlpha=.78;wrap(ctx,$("subtitle").value,W/2,H*.24,W*.78,Math.round(W*.035*1.4));ctx.globalAlpha=1;
- if(uploaded){const img=new Image();img.onload=()=>paintImage(ctx,img,W,H,pad);img.src=uploaded}
- else {ctx.fillStyle="#dfe2e8";roundRect(ctx,pad,H*.34,W-pad*2,H*.46,28);ctx.fillStyle="#8b929e";ctx.font=`700 ${Math.round(W*.035)}px system-ui`;ctx.fillText("Upload your app screenshot",W/2,H*.57)}
+ return new Promise(resolveDraw=>{
+  const [W,H]=getDims(),c=$("canvas"),ctx=c.getContext("2d");c.width=W;c.height=H;
+  const t=$("template").value;
+  let bg=$("bg").value,fg=$("fg").value;
+  if(genBgImg){
+   ctx.drawImage(genBgImg,0,0,W,H);
+   ctx.fillStyle="rgba(0,0,0,.28)";ctx.fillRect(0,0,W,H);
+   fg=$("fg").value;
+  } else {
+   if(t==="dark"){bg="#111827";fg="#ffffff"} if(t==="gradient"){const g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,"#635bff");g.addColorStop(1,"#a78bfa");ctx.fillStyle=g}else ctx.fillStyle=bg;
+   ctx.fillRect(0,0,W,H);
+  }
+  const pad=W*.085; ctx.fillStyle=fg;ctx.textAlign="center";
+  ctx.font=`900 ${Math.round(W*.065)}px system-ui`; wrap(ctx,$("headline").value,W/2,H*.14,W*.82,Math.round(W*.065*1.15));
+  ctx.font=`500 ${Math.round(W*.035)}px system-ui`;ctx.globalAlpha=.78;wrap(ctx,$("subtitle").value,W/2,H*.24,W*.78,Math.round(W*.035*1.4));ctx.globalAlpha=1;
+  if(uploaded){const img=new Image();img.onload=()=>{paintImage(ctx,img,W,H,pad);resolveDraw()};img.onerror=()=>resolveDraw();img.src=uploaded}
+  else {ctx.fillStyle="#dfe2e8";roundRect(ctx,pad,H*.34,W-pad*2,H*.46,28);ctx.fillStyle="#8b929e";ctx.font=`700 ${Math.round(W*.035)}px system-ui`;ctx.fillText("Upload your app screenshot",W/2,H*.57);resolveDraw()}
+ });
 }
 function wrap(ctx,text,x,y,maxWidth,lineH){const words=text.split(" ");let line="",lines=[];for(const w of words){const test=line?line+" "+w:w;if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=w}else line=test}if(line)lines.push(line);lines.slice(0,3).forEach((l,i)=>ctx.fillText(l,x,y+i*lineH))}
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
+const PRO_FRAMES=new Set(["tablet","browser","glass"]);
+
 function paintImage(ctx,img,W,H,pad){
+ const frame=$("frame").value;
  const areaY=H*.31,areaH=H*.57,areaW=W-pad*1.2;let scale=Math.min(areaW/img.width,areaH/img.height);let iw=img.width*scale,ih=img.height*scale,x=(W-iw)/2,y=areaY+(areaH-ih)/2;
- if($("frame").value==="phone"){ctx.fillStyle="#111";roundRect(ctx,x-18,y-18,iw+36,ih+36,42);ctx.fillStyle="#222";roundRect(ctx,x-7,y-7,iw+14,ih+14,30)}
- ctx.drawImage(img,x,y,iw,ih)
+
+ if(frame==="phone"){
+  ctx.fillStyle="#111";roundRect(ctx,x-18,y-18,iw+36,ih+36,42);
+  ctx.fillStyle="#222";roundRect(ctx,x-7,y-7,iw+14,ih+14,30);
+  ctx.drawImage(img,x,y,iw,ih);
+  return;
+ }
+
+ if(frame==="tablet"){
+  ctx.fillStyle="#1c1c1e";roundRect(ctx,x-28,y-28,iw+56,ih+56,20);
+  ctx.fillStyle="#000";roundRect(ctx,x-14,y-14,iw+28,ih+28,10);
+  ctx.drawImage(img,x,y,iw,ih);
+  return;
+ }
+
+ if(frame==="browser"){
+  const barH=Math.max(H*.032,26);
+  ctx.save();
+  ctx.shadowColor="rgba(0,0,0,.25)";ctx.shadowBlur=30;ctx.shadowOffsetY=14;
+  ctx.fillStyle="#e7e7ea";roundRect(ctx,x-2,y-barH-2,iw+4,ih+barH+4,18);
+  ctx.restore();
+  ["#ff5f57","#febc2e","#28c840"].forEach((c,i)=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(x+18+i*20,y-barH/2,6,0,Math.PI*2);ctx.fill()});
+  ctx.fillStyle="#fff";roundRect(ctx,x,y-barH+6,iw,barH-12,8);
+  ctx.save();roundRect(ctx,x,y,iw,ih,4);ctx.clip();ctx.drawImage(img,x,y,iw,ih);ctx.restore();
+  return;
+ }
+
+ if(frame==="glass"){
+  ctx.save();
+  ctx.shadowColor="rgba(0,0,0,.35)";ctx.shadowBlur=45;ctx.shadowOffsetY=22;
+  const g=ctx.createLinearGradient(x-16,y-16,x+iw+16,y+ih+16);
+  g.addColorStop(0,"rgba(255,255,255,.55)");g.addColorStop(1,"rgba(255,255,255,.12)");
+  ctx.fillStyle=g;roundRect(ctx,x-16,y-16,iw+32,ih+32,34);
+  ctx.restore();
+  ctx.save();roundRect(ctx,x,y,iw,ih,24);ctx.clip();ctx.drawImage(img,x,y,iw,ih);ctx.restore();
+  return;
+ }
+
+ // "none"
+ ctx.drawImage(img,x,y,iw,ih);
 }
+
+$("frame").addEventListener("change",()=>{
+ if(PRO_FRAMES.has($("frame").value) && !proStatus){
+  $("frame").value="phone";
+  setAiMsg("That frame is a Pro feature.","error");
+  openPro();
+  draw();
+ }
+});
 function exportCanvas(type){
  if(!uploaded){alert("Upload a screenshot first.");return}
  const a=document.createElement("a");a.download=`wyte-ai-screenshot.${type}`;a.href=$("canvas").toDataURL(type==="jpg"?"image/jpeg":"image/png",.95);a.click();
  exports++;if(currentUser)localStorage.setItem("wyte_exports_"+currentUser.uid,exports);renderStats();
 }
 $("downloadBtn").onclick=()=>exportCanvas("png");$("jpgBtn").onclick=()=>exportCanvas("jpg");
+
+let jszipLoading=null;
+function ensureJSZip(){
+ if(window.JSZip) return Promise.resolve();
+ if(jszipLoading) return jszipLoading;
+ jszipLoading=new Promise((resolve,reject)=>{
+  const s=document.createElement("script");
+  s.src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+  s.onload=()=>resolve();
+  s.onerror=()=>reject(new Error("Could not load the ZIP library — check your connection."));
+  document.head.appendChild(s);
+ });
+ return jszipLoading;
+}
+
+// The actual chore developers hit here: an app store listing needs several
+// exact pixel sizes (iPhone, iPad, Android), not just one. Free users export
+// one size at a time like normal; Pro renders all three and zips them.
+$("exportAllBtn").onclick=async()=>{
+ if(!uploaded){alert("Upload a screenshot first.");return}
+ if(!currentUser){alert("Sign in first.");return}
+ if(!proStatus){openPro();return}
+ const btn=$("exportAllBtn");const originalLabel=btn.innerHTML;
+ btn.disabled=true;btn.textContent="Generating…";
+ const originalSize=$("size").value;
+ try{
+  await ensureJSZip();
+  const zip=new JSZip();
+  const sizes=[["ios","iphone-1290x2796"],["android","android-1080x1920"],["ipad","ipad-2048x2732"]];
+  for(const [key,label] of sizes){
+   $("size").value=key;
+   await draw();
+   const dataUrl=$("canvas").toDataURL("image/png",.95);
+   zip.file(`wyte-ai-${label}.png`,dataUrl.split(",")[1],{base64:true});
+  }
+  const blob=await zip.generateAsync({type:"blob"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="wyte-ai-screenshots.zip";a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  exports+=sizes.length;if(currentUser)localStorage.setItem("wyte_exports_"+currentUser.uid,exports);renderStats();
+ }catch(e){
+  alert("Batch export failed: "+(e.message||"unknown error"));
+ }finally{
+  $("size").value=originalSize;await draw();
+  btn.disabled=false;btn.innerHTML=originalLabel;
+ }
+};
 
 function freeProjectLimit(){ return freeTierBlocked ? 0 : 3; }
 
@@ -459,7 +558,7 @@ function setGenBg(src){
  img.onerror=()=>{ setFalMsg("Could not load the generated background image.","error"); };
  img.src=src;
 }
-function loadProject(id){const p=projects.find(x=>x.id===id);if(!p)return;$("headline").value=p.headline;$("subtitle").value=p.subtitle;$("bg").value=p.bg;$("fg").value=p.fg;$("template").value=p.template;$("frame").value=p.frame;$("size").value=p.size;uploaded=p.image;setGenBg(p.genBg||null);showSection("create");draw()}
+function loadProject(id){const p=projects.find(x=>x.id===id);if(!p)return;$("headline").value=p.headline;$("subtitle").value=p.subtitle;$("bg").value=p.bg;$("fg").value=p.fg;$("template").value=p.template;$("frame").value=(PRO_FRAMES.has(p.frame)&&!proStatus)?"phone":p.frame;$("size").value=p.size;uploaded=p.image;setGenBg(p.genBg||null);showSection("create");draw()}
 function renderStats(){$("projectCount").textContent=projects.length;$("exportCount").textContent=exports;$("planStat").textContent=proStatus?"Pro":"Free"}
 function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 
