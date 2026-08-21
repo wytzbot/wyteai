@@ -1,0 +1,11 @@
+{
+  "name": "wyte-ai-api",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@fal-ai/client": "^1.7.2",
+    "@supabase/supabase-js": "^2.57.0"
+  }
+}
