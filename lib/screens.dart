@@ -184,18 +184,272 @@ class SettingsScreen extends StatelessWidget {
   @override Widget build(BuildContext context) => const SettingsRoom();
 }
 
-class TrustPage extends StatelessWidget {
+class PrivacyPolicyScreen extends StatelessWidget {
+  const PrivacyPolicyScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const _LegalPage(
+      title: 'Privacy Policy',
+      icon: Icons.verified_user_outlined,
+      sections: [
+        _LegalSection(
+          title: 'What we collect',
+          body:
+              'Wyte AI collects information needed to provide the service, '
+              'such as your account information, authentication information, '
+              'usage information, credits and content you choose to create or upload.',
+        ),
+        _LegalSection(
+          title: 'How we use your information',
+          body:
+              'We use information to authenticate your account, provide AI '
+              'generation features, manage credits and payments, save your '
+              'projects, improve reliability and provide customer support.',
+        ),
+        _LegalSection(
+          title: 'Your generated content',
+          body:
+              'Content you submit for generation may be processed by the AI '
+              'providers required to deliver the requested service. Do not '
+              'submit confidential or sensitive information unless you are '
+              'comfortable with it being processed for that purpose.',
+        ),
+        _LegalSection(
+          title: 'Payments',
+          body:
+              'Payment information is processed by our payment provider. '
+              'Wyte AI does not intentionally store your full card details.',
+        ),
+        _LegalSection(
+          title: 'Third-party services',
+          body:
+              'Wyte AI may use services such as Supabase, payment providers, '
+              'AI providers and hosting infrastructure to operate the platform.',
+        ),
+        _LegalSection(
+          title: 'Data security',
+          body:
+              'We use reasonable technical and organizational measures to '
+              'protect account information and stored content. No online '
+              'service can guarantee absolute security.',
+        ),
+        _LegalSection(
+          title: 'Your choices',
+          body:
+              'You may request information about your account data or request '
+              'account-related assistance through the support channel provided '
+              'by Wyte AI.',
+        ),
+        _LegalSection(
+          title: 'Policy updates',
+          body:
+              'This Privacy Policy may be updated as Wyte AI evolves. Material '
+              'changes may be reflected by updating this page.',
+        ),
+      ],
+    );
+  }
+}
+
+class TermsOfServiceScreen extends StatelessWidget {
+  const TermsOfServiceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const _LegalPage(
+      title: 'Terms of Service',
+      icon: Icons.gavel_outlined,
+      sections: [
+        _LegalSection(
+          title: 'Using Wyte AI',
+          body:
+              'You may use Wyte AI only for lawful purposes and in accordance '
+              'with these terms. You are responsible for activity performed '
+              'through your account.',
+        ),
+        _LegalSection(
+          title: 'AI-generated content',
+          body:
+              'AI-generated results may contain inaccuracies, unexpected '
+              'content or similarities to existing works. You are responsible '
+              'for reviewing generated content before publishing or using it.',
+        ),
+        _LegalSection(
+          title: 'Prohibited use',
+          body:
+              'You must not use Wyte AI to create or distribute unlawful, '
+              'fraudulent, abusive, harmful or otherwise prohibited content. '
+              'You must also respect intellectual-property and privacy rights.',
+        ),
+        _LegalSection(
+          title: 'Credits and payments',
+          body:
+              'Some features may require credits or a paid plan. Credits and '
+              'plans may have limits, expiration rules or other conditions '
+              'shown at the time of purchase.',
+        ),
+        _LegalSection(
+          title: 'Your content',
+          body:
+              'You remain responsible for content you submit to Wyte AI and '
+              'for ensuring you have the necessary rights and permissions to '
+              'use that content.',
+        ),
+        _LegalSection(
+          title: 'Service availability',
+          body:
+              'We aim to keep Wyte AI available and reliable, but the service '
+              'may occasionally be unavailable because of maintenance, '
+              'provider outages, upgrades or circumstances outside our control.',
+        ),
+        _LegalSection(
+          title: 'Account termination',
+          body:
+              'Accounts may be restricted or terminated where necessary to '
+              'protect the service, users, providers or comply with applicable law.',
+        ),
+        _LegalSection(
+          title: 'Changes to these terms',
+          body:
+              'These terms may change as the service develops. Continued use '
+              'of Wyte AI after an update constitutes acceptance of the updated terms.',
+        ),
+      ],
+    );
+  }
+}
+
+class SecurityScreen extends StatelessWidget {
+  const SecurityScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const _LegalPage(
+      title: 'Security',
+      icon: Icons.security_outlined,
+      sections: [
+        _LegalSection(
+          title: 'Account protection',
+          body:
+              'Wyte AI uses authentication infrastructure to protect user '
+              'accounts and restrict access to authenticated resources.',
+        ),
+        _LegalSection(
+          title: 'Database protection',
+          body:
+              'User data is stored using access controls designed to prevent '
+              'users from accessing resources belonging to other accounts.',
+        ),
+        _LegalSection(
+          title: 'Server-side secrets',
+          body:
+              'Private provider credentials and payment secrets should remain '
+              'on the server and are not intended to be embedded in the Flutter '
+              'client application.',
+        ),
+        _LegalSection(
+          title: 'Payments',
+          body:
+              'Payment processing is handled through the configured payment '
+              'provider rather than storing sensitive card information inside '
+              'the Wyte AI application.',
+        ),
+        _LegalSection(
+          title: 'AI providers',
+          body:
+              'Requests may be processed by external AI infrastructure required '
+              'to provide generation features. Provider credentials are handled '
+              'server-side.',
+        ),
+        _LegalSection(
+          title: 'Reporting a security issue',
+          body:
+              'If you discover a security vulnerability, please report it '
+              'through the official Wyte AI support channel rather than publicly '
+              'sharing sensitive details.',
+        ),
+      ],
+    );
+  }
+}
+
+class _LegalSection {
   final String title;
   final String body;
-  const TrustPage({super.key, required this.title, required this.body});
-  @override Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title)),
-    body: SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 900),
-        child: Text(body, style: const TextStyle(fontSize: 16, height: 1.7)),
+
+  const _LegalSection({
+    required this.title,
+    required this.body,
+  });
+}
+
+class _LegalPage extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final List<_LegalSection> sections;
+
+  const _LegalPage({
+    required this.title,
+    required this.icon,
+    required this.sections,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
       ),
-    ),
-  );
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, size: 42),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                ...sections.map(
+                  (section) => Padding(
+                    padding: const EdgeInsets.only(bottom: 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          section.title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          section.body,
+                          style: TextStyle(
+                            fontSize: 16,
+                            height: 1.65,
+                            color: Colors.grey.shade300,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
