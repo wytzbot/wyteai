@@ -1,73 +1,62 @@
-# Wyte AI — Flutter Web
+# Wyte AI — HTML / CSS / JS build
 
-Frontend: Flutter Web. Backend: Vercel serverless functions under `/api`.
-Auth & database: Supabase (Google-only sign-in, Postgres, private Storage).
-AI: fal.ai. Payments: Flutterwave (v3 Standard checkout + verification).
+This is the Flutter app rewritten as a plain HTML, CSS and vanilla‑JS
+single‑page app. Every screen from the original app is here — Welcome,
+Create, Suggestions, Templates, Gallery, Projects, Brand Kit, Pricing and
+Settings (with Privacy/Terms/Security) — and it talks to the **same, unchanged**
+backend: the serverless functions in `/api` and your existing Supabase
+project. Nothing on the server side changed, so no data migration is needed.
 
-See `AI_AND_STORAGE.md` for the full architecture and `PRICING_AND_UNIT_ECONOMICS.md`
-for the credit/plan model.
+## What changed vs. the Flutter build
 
-## 1. Supabase
+- No Flutter, no Dart, no build step. The whole client is `index.html` +
+  `css/style.css` + the ES modules in `js/`.
+- Auth and API calls now go through the official `@supabase/supabase-js`
+  library (loaded from a CDN) instead of `supabase_flutter`, but they hit
+  the exact same endpoints (`Supabase.auth`, `/api/credits`,
+  `/api/generate`, `/api/flutterwave-create`).
+- Config that used to be injected at build time with `--dart-define` is now
+  read at runtime from `js/config.js`.
+- Added: generated images now actually render on screen (in the Create
+  workspace and in Gallery), with a small local history cached in the
+  browser — the original UI only showed a placeholder grid.
+- Added: a signature animated ink‑stroke logo mark and drifting aurora
+  background with cursor parallax on the Welcome screen, a paired
+  display/body/mono type system (Bricolage Grotesque + Inter + IBM Plex
+  Mono), and a subtle grain texture across the app — a distinct visual
+  identity on top of the original dark violet/cyan palette.
 
-1. Create a Supabase project and run `supabase_schema.sql` against it (tables, RLS
-   policies, the private `generated` storage bucket, and the `consume_credits` /
-   `refund_credits` / `grant_pro_subscription` functions).
-2. In Supabase Auth, enable the **Google** provider and add your deployed app
-   domain to the redirect allow-list.
-3. See `SUPABASE_SETUP.md` for details.
+## Setup
 
-## 2. Flutterwave
+1. Open `js/config.js` and fill in:
+   ```js
+   window.WYTE_CONFIG = {
+     SUPABASE_URL: "https://xxxxx.supabase.co",
+     SUPABASE_PUBLISHABLE_KEY: "your-anon-key",
+     API_BASE_URL: "", // leave blank when deployed on the same origin as /api
+   };
+   ```
+2. Deploy `/api` and this static site together on Vercel (same project as
+   before — the environment variables `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
+   `FLW_SECRET_KEY`, `APP_BASE_URL`, etc. described in `SUPABASE_SETUP.md`
+   and `AI_AND_STORAGE.md` are unchanged).
+3. Add your production URL as an allowed redirect URL in Supabase Auth →
+   URL Configuration, same as before.
+4. Open `index.html` (or your deployed URL). No build command required —
+   `vercel.json` just serves the static files and the `/api` functions.
 
-The frontend never receives any Flutterwave secret.
+## File map
 
-Set these server-side as Vercel environment variables (see `.env.example`):
-
-- `FLW_SECRET_KEY` — classic v3 secret key, used to create the hosted checkout
-  link (`api/flutterwave-create.js`) and to re-verify transactions
-  (`api/flutterwave-webhook.js`)
-- `FLW_SECRET_HASH` — the webhook secret hash configured in your Flutterwave
-  dashboard
-
-In the Flutterwave Dashboard, set the webhook URL to your deployed
-`/api/flutterwave-webhook` endpoint and configure the same secret hash as
-`FLW_SECRET_HASH`. Flutterwave sends that secret hash back verbatim in the
-`verif-hash` header of every webhook call; the handler checks it with a
-timing-safe comparison before doing anything else.
-
-### Important production payment note
-
-The webhook never grants Pro from the payload alone. After the signature check
-passes, it independently re-verifies the transaction with Flutterwave
-(`verify_by_reference`) and only calls `grant_pro_subscription` once status,
-reference, amount and currency all match what was recorded when the checkout
-was created. This prevents fake callbacks and duplicate grants — the RPC itself
-is idempotent, so a retried webhook delivery can't grant Pro twice.
-
-## 3. AI providers
-
-Add `FAL_KEY` only as a server-side secret in Vercel. The Flutter client never
-talks to fal.ai directly — it calls `api/generate.js`, which reserves credits,
-calls fal.ai, and stores the result in Supabase Storage.
-
-## Run
-
-```bash
-flutter pub get
-flutter run -d chrome --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KEY=... --dart-define=API_BASE_URL=...
 ```
-
-## Build
-
-```bash
-flutter build web --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KEY=... --dart-define=API_BASE_URL=...
+index.html            entry point / shell
+css/style.css          design system + all component styles
+js/config.js            fill in Supabase keys here
+js/supabase-client.js   Supabase client + auth (was lib/supabase.dart, lib/auth.dart)
+js/api.js               credits / generate / checkout calls (was lib/services.dart, lib/payments.dart)
+js/plans.js             plan data (was lib/plans.dart)
+js/legal.js             privacy/terms/security copy (was in lib/screens.dart)
+js/icons.js             small inline icon set
+js/app.js               router + all screens (was lib/app.dart, screens.dart, widgets.dart, pricing.dart)
+api/                     unchanged Vercel serverless functions
+supabase_schema.sql      unchanged database schema
 ```
-
-`API_BASE_URL` is the base URL of the deployed Vercel project (where `/api/*`
-is served).
-
-## Deploy
-
-1. `flutter build web` (outputs to `build/web`).
-2. Deploy the Flutter build output plus `api/` and `vercel.json` to Vercel —
-   Vercel auto-detects the `api/*.js` files as serverless functions.
-3. Connect the GitHub repository to Vercel for CI deploys, or upload directly.
