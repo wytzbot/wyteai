@@ -1,9 +1,0 @@
-{
-  "name": "Wyte AI",
-  "short_name": "Wyte AI",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#08090C",
-  "theme_color": "#08090C",
-  "description": "Wyte AI creative studio"
-}
