@@ -1,6 +1,16 @@
 -- Wyte AI Supabase schema
+-- Auth is Firebase, not Supabase Auth, so there is no auth.users row to key
+-- off of. Every user is identified by their Firebase UID (a plain string),
+-- and every table below is only ever read/written by the /api/* serverless
+-- functions using the Supabase SERVICE ROLE key after independently
+-- verifying a Firebase ID token. The browser holds no Supabase credentials
+-- at all, so there are deliberately no client-facing RLS policies here —
+-- RLS is left enabled with zero policies, which denies all access to the
+-- anon/authenticated roles and only the service_role (which bypasses RLS)
+-- can touch these tables.
+
 create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
+  id text primary key, -- Firebase UID
   plan text not null default 'free' check (plan in ('free','pro')),
   credits integer not null default 5,
   daily_free_used integer not null default 0,
@@ -11,7 +21,7 @@ create table if not exists public.profiles (
 
 create table if not exists public.generation_jobs (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id text not null references public.profiles(id) on delete cascade,
   prompt text not null,
   model text not null default 'auto',
   mode text not null default 'standard',
@@ -28,7 +38,7 @@ create table if not exists public.generation_jobs (
 
 create table if not exists public.subscriptions (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id text not null references public.profiles(id) on delete cascade,
   provider text not null default 'flutterwave',
   status text not null default 'pending',
   transaction_id text,
@@ -42,7 +52,7 @@ create table if not exists public.subscriptions (
 
 create table if not exists public.expenses (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id text not null references public.profiles(id) on delete cascade,
   title text not null,
   amount numeric(12,2) not null,
   currency text not null default 'NGN',
@@ -56,45 +66,25 @@ alter table public.profiles enable row level security;
 alter table public.generation_jobs enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.expenses enable row level security;
+-- No policies are defined on purpose (see note above) — everything goes
+-- through the server with the service role key.
 
-create policy "profiles own row" on public.profiles for select using (auth.uid()=id);
-create policy "profiles own insert" on public.profiles for insert with check (auth.uid()=id);
--- Profile balances and plan are server-controlled. Clients may read, but cannot mutate them.
-
-
-create policy "jobs own read" on public.generation_jobs for select using (auth.uid()=user_id);
-create policy "subscriptions own read" on public.subscriptions for select using (auth.uid()=user_id);
-create policy "expenses own all" on public.expenses for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
-
--- Storage bucket for generated images. Keep bucket private and use signed URLs.
+-- Storage bucket for generated images. Keep bucket private; only the server
+-- (service role) ever reads/writes it, via short-lived signed URLs handed
+-- back to the client.
 insert into storage.buckets (id, name, public) values ('generated', 'generated', false)
 on conflict (id) do nothing;
+-- No storage.objects policies either, for the same reason as above.
 
-create policy "generated images own read" on storage.objects
-for select to authenticated
-using (bucket_id='generated' and (storage.foldername(name))[1]=auth.uid()::text);
-
-create policy "generated images own insert" on storage.objects
-for insert to authenticated
-with check (bucket_id='generated' and (storage.foldername(name))[1]=auth.uid()::text);
-
--- Profile row automatically created for Google sign-ins.
-create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
-begin
-  insert into public.profiles (id) values (new.id)
-  on conflict (id) do nothing;
-  return new;
-end;
-$$;
-
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-after insert on auth.users
-for each row execute procedure public.handle_new_user();
+-- Ensures a profile row exists for a given Firebase UID. Called from the
+-- server (api/_utils.js -> ensureProfile) on every verified request, since
+-- there is no Supabase Auth sign-up event to trigger off of anymore.
+-- (Implemented as a plain upsert in application code; kept here as a comment
+-- for anyone looking for the old on_auth_user_created trigger — it has been
+-- removed along with the rest of Supabase Auth.)
 
 -- Atomic server-side credit consumption. The API calls this with the service key.
-create or replace function public.consume_credits(p_user_id uuid, p_cost integer)
+create or replace function public.consume_credits(p_user_id text, p_cost integer)
 returns jsonb
 language plpgsql
 security definer
@@ -118,11 +108,11 @@ begin
   update public.profiles set credits=r.credits,daily_free_used=r.daily_free_used,daily_free_date=r.daily_free_date,updated_at=now() where id=p_user_id;
   return jsonb_build_object('plan',r.plan,'credits',r.credits,'cost',p_cost);
 end $$;
-revoke all on function public.consume_credits(uuid,integer) from public, anon, authenticated;
-grant execute on function public.consume_credits(uuid,integer) to service_role;
+revoke all on function public.consume_credits(text,integer) from public, anon, authenticated;
+grant execute on function public.consume_credits(text,integer) to service_role;
 
 
-create or replace function public.refund_credits(p_user_id uuid, p_cost integer)
+create or replace function public.refund_credits(p_user_id text, p_cost integer)
 returns void language plpgsql security definer set search_path=public as $$
 declare r public.profiles%rowtype;
 begin
@@ -136,8 +126,8 @@ begin
  end if;
  update public.profiles set credits=r.credits,daily_free_used=r.daily_free_used,updated_at=now() where id=p_user_id;
 end $$;
-revoke all on function public.refund_credits(uuid,integer) from public, anon, authenticated;
-grant execute on function public.refund_credits(uuid,integer) to service_role;
+revoke all on function public.refund_credits(text,integer) from public, anon, authenticated;
+grant execute on function public.refund_credits(text,integer) to service_role;
 
 
 -- Atomically marks a subscription successful and grants Pro (500 credits, 30-day
@@ -145,7 +135,7 @@ grant execute on function public.refund_credits(uuid,integer) to service_role;
 -- independently re-verifying the transaction with Flutterwave, should call this.
 -- Safe to call more than once for the same subscription: if it is already
 -- 'successful' the update matches zero rows and no credits are granted twice.
-create or replace function public.grant_pro_subscription(p_subscription_id uuid, p_user_id uuid, p_transaction_id text)
+create or replace function public.grant_pro_subscription(p_subscription_id uuid, p_user_id text, p_transaction_id text)
 returns boolean
 language plpgsql
 security definer
@@ -162,5 +152,5 @@ begin
   end if;
   return granted;
 end $$;
-revoke all on function public.grant_pro_subscription(uuid,uuid,text) from public, anon, authenticated;
-grant execute on function public.grant_pro_subscription(uuid,uuid,text) to service_role;
+revoke all on function public.grant_pro_subscription(uuid,text,text) from public, anon, authenticated;
+grant execute on function public.grant_pro_subscription(uuid,text,text) to service_role;
