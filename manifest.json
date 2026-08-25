@@ -7,6 +7,6 @@
   "theme_color": "#08090C",
   "description": "Wyte AI creative studio",
   "icons": [
-    { "src": "assets/wyte_icon.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "favicon.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
